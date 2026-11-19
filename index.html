@@ -34,6 +34,54 @@
     </div>
   </header>
 
+  <main class="max-w-7xl mx-auto p-5">
+
+    <!-- Search and Controls -->
+    <section class="flex flex-col md:flex-row gap-3 mb-8">
+
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Search any cryptocurrency..."
+        class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-3 outline-none focus:border-yellow-400"
+      >
+
+      <select
+        id="sortSelect"
+        <!-- class="bg-slate-800 border border-slate-700 rounded-lg p-3" -->
+      >
+        <option value="market_cap_desc">Market Cap</option>
+        <option value="price_desc">Price: High to Low</option>
+        <option value="price_asc">Price: Low to High</option>
+        <option value="change_desc">24h Change: High to Low</option>
+      </select>
+
+      <button
+        id="refreshBtn"
+        class="bg-blue-600 hover:bg-blue-700 rounded-lg px-5 py-3"
+      >
+        <i class="fa-solid fa-rotate-right mr-2"></i>
+        Refresh
+      </button>
+
+      <button
+        id="watchlistBtn"
+        class="bg-yellow-600 hover:bg-yellow-700 rounded-lg px-5 py-3"
+      >
+        <i class="fa-solid fa-star mr-2"></i>
+        Watchlist
+      </button>
+
+      <button
+        id="homeBtn"
+        class="bg-slate-700 hover:bg-slate-600 rounded-lg px-5 py-3"
+      >
+        <i class="fa-solid fa-house mr-2"></i>
+        Home
+      </button>
+
+    </section>
+
     
   </body>
-</html>
+  </html>
