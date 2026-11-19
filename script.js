@@ -422,3 +422,341 @@ function formatPrice(value) {
 }
 
 
+// ==========================================
+// 12. ADD OR REMOVE WATCHLIST
+// ==========================================
+
+function toggleWatchlist(id) {
+
+    if (watchlist.includes(id)) {
+
+        watchlist = watchlist.filter(function (coinId) {
+            return coinId !== id;
+        });
+
+    } else {
+        watchlist.push(id);
+    }
+
+    try {
+        localStorage.setItem(
+            "cryptoWatchlist",
+            JSON.stringify(watchlist)
+        );
+
+    } catch (error) {
+        showError("Unable to save watchlist.");
+    }
+
+    displayCoins();
+}
+
+// ==========================================
+// 13. LOAD WATCHLIST
+// ==========================================
+
+async function loadWatchlist() {
+
+    const thisRequest = ++requestNumber;
+
+    currentView = "watchlist";
+    searchInput.value = "";
+
+    showLoading();
+
+    if (watchlist.length === 0) {
+        currentCoins = [];
+        hideLoading();
+        displayCoins();
+        return;
+    }
+
+    try {
+
+        const ids = watchlist.join(",");
+
+        const data = await fetchAPI(
+            API_URL +
+            "/coins/markets" +
+            "?vs_currency=inr" +
+            "&ids=" + ids +
+            "&sparkline=false"
+        );
+
+        if (thisRequest !== requestNumber) {
+            return;
+        }
+
+        currentCoins = data;
+
+        hideLoading();
+        displayCoins();
+
+    } catch (error) {
+
+        if (thisRequest !== requestNumber) {
+            return;
+        }
+
+        hideLoading();
+        showError(error.message);
+    }
+}
+
+// ==========================================
+// 14. SHOW COIN DETAILS
+// ==========================================
+
+async function showDetails(id) {
+
+    const coin = currentCoins.find(function (item) {
+        return item.id === id;
+    });
+
+    if (!coin) {
+        return;
+    }
+
+    const thisRequest = ++requestNumber;
+
+    coinContainer.classList.add("hidden");
+    detailView.classList.remove("hidden");
+    detailView.replaceChildren();
+
+    const loadingText = document.createElement("p");
+    loadingText.textContent = "Loading coin details...";
+    loadingText.className = "text-yellow-400";
+
+    detailView.appendChild(loadingText);
+
+    try {
+
+        const details = await fetchAPI(
+            API_URL +
+            "/coins/" + id +
+            "?localization=false" +
+            "&tickers=false" +
+            "&market_data=true" +
+            "&community_data=false" +
+            "&developer_data=false"
+        );
+
+        if (thisRequest !== requestNumber) {
+            return;
+        }
+
+        detailView.replaceChildren();
+
+        const image = document.createElement("img");
+        image.src = coin.image;
+        image.alt = coin.name;
+        image.className = "w-16 h-16 mb-4";
+
+        const title = document.createElement("h2");
+
+        title.textContent =
+            coin.name + " (" + coin.symbol.toUpperCase() + ")";
+
+        title.className = "text-2xl font-bold mb-4";
+
+        const description = document.createElement("p");
+
+        const descriptionText = details.description?.en || "";
+
+        description.textContent = descriptionText
+            ? descriptionText.replace(/<[^>]*>/g, "").slice(0, 600)
+            : "Description not available.";
+
+        description.className = "text-gray-300 mb-6";
+
+        const market = details.market_data;
+
+        const statItems = [
+            ["Current Price", formatPrice(coin.current_price)],
+            ["Market Cap", formatPrice(coin.market_cap)],
+            ["24h High", formatPrice(market?.high_24h?.inr)],
+            ["24h Low", formatPrice(market?.low_24h?.inr)],
+            ["Total Volume", formatPrice(market?.total_volume?.inr)],
+            [
+                "Circulating Supply",
+                Number(market?.circulating_supply || 0).toLocaleString("en-IN")
+            ]
+        ];
+
+        const stats = document.createElement("div");
+        stats.className = "space-y-3";
+
+        const statElements = statItems.map(function (item) {
+
+            const row = document.createElement("p");
+            row.textContent = item[0] + ": " + item[1];
+            row.className = "text-gray-300";
+
+            return row;
+        });
+
+        stats.append(...statElements);
+
+        const backButton = document.createElement("button");
+
+        backButton.dataset.action = "back";
+        backButton.className =
+            "bg-blue-600 hover:bg-blue-700 rounded-lg px-5 py-3 mt-6";
+
+        backButton.append(
+            createIcon("fa-solid fa-arrow-left mr-2"),
+            document.createTextNode("Back to Coins")
+        );
+
+        detailView.append(
+            image,
+            title,
+            description,
+            stats,
+            backButton
+        );
+
+    } catch (error) {
+
+        if (thisRequest !== requestNumber) {
+            return;
+        }
+
+        detailView.replaceChildren();
+
+        const message = document.createElement("p");
+        message.textContent = error.message;
+        message.className = "text-red-400";
+
+        const backButton = document.createElement("button");
+
+        backButton.dataset.action = "back";
+        backButton.className = "bg-blue-600 rounded-lg p-3 mt-4";
+
+        backButton.append(
+            createIcon("fa-solid fa-arrow-left mr-2"),
+            document.createTextNode("Back")
+        );
+
+        detailView.append(message, backButton);
+    }
+}
+ 
+
+// ==========================================
+// 15. EVENT DELEGATION
+// ==========================================
+
+coinContainer.addEventListener("click", function (event) {
+
+    const button = event.target.closest("button[data-action]");
+
+    if (!button) {
+        return;
+    }
+
+    const card = button.closest(".coin-card");
+
+    if (!card) {
+        return;
+    }
+
+    const id = card.dataset.id;
+
+    if (button.dataset.action === "watch") {
+        toggleWatchlist(id);
+    }
+
+    if (button.dataset.action === "details") {
+        showDetails(id);
+    }
+});
+
+// ==========================================
+// 16. DETAIL PAGE BACK BUTTON
+// ==========================================
+
+detailView.addEventListener("click", function (event) {
+
+    const button = event.target.closest(
+        "button[data-action='back']"
+    );
+
+    if (button) {
+        detailView.classList.add("hidden");
+        coinContainer.classList.remove("hidden");
+    }
+});
+
+// ==========================================
+// 17. SEARCH WITH DEBOUNCE
+// ==========================================
+
+searchInput.addEventListener("input", function () {
+
+    clearTimeout(searchTimer);
+
+    searchTimer = setTimeout(function () {
+
+        if (currentView === "watchlist") {
+            displayCoins();
+        } else {
+            searchCoins();
+        }
+
+    }, 500);
+});
+
+// ==========================================
+// 18. SORT COINS
+// ==========================================
+
+sortSelect.addEventListener("change", function () {
+    displayCoins();
+});
+
+// ==========================================
+// 19. REFRESH BUTTON
+// ==========================================
+
+refreshBtn.addEventListener("click", function () {
+
+    if (currentView === "watchlist") {
+        loadWatchlist();
+
+    } else if (currentView === "search") {
+        searchCoins();
+
+    } else {
+        fetchCoins();
+    }
+});
+
+// ==========================================
+// 20. WATCHLIST BUTTON
+// ==========================================
+
+watchlistBtn.addEventListener("click", function () {
+    loadWatchlist();
+});
+
+// ==========================================
+// 21. HOME BUTTON
+// ==========================================
+
+homeBtn.addEventListener("click", function () {
+    fetchCoins();
+});
+
+// ==========================================
+// 22. INITIAL PAGE LOAD
+// ==========================================
+
+errorBox.classList.add("hidden");
+empty.classList.add("hidden");
+
+// Load top 20 coins when website opens.
+fetchCoins();
+
+
+
