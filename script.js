@@ -113,3 +113,121 @@ function showEmpty(message) {
     empty.textContent = message;
     empty.classList.remove("hidden");
 }
+
+
+// ==========================================
+// 7. LOAD TOP 20 COINS
+// ==========================================
+
+async function fetchCoins() {
+
+    const thisRequest = ++requestNumber;
+
+    currentView = "home";
+    searchInput.value = "";
+
+    showLoading();
+
+    const url =
+        API_URL +
+        "/coins/markets" +
+        "?vs_currency=inr" +
+        "&order=market_cap_desc" +
+        "&per_page=20" +
+        "&page=1" +
+        "&sparkline=false";
+
+    try {
+        const data = await fetchAPI(url);
+
+        if (thisRequest !== requestNumber) {
+            return;
+        }
+
+        currentCoins = data;
+
+        hideLoading();
+        displayCoins();
+
+    } catch (error) {
+
+        if (thisRequest !== requestNumber) {
+            return;
+        }
+
+        hideLoading();
+        showError(error.message);
+    }
+}
+
+// ==========================================
+// 8. SEARCH COINS
+// ==========================================
+
+async function searchCoins() {
+
+    const query = searchInput.value.trim();
+
+    if (query === "") {
+        fetchCoins();
+        return;
+    }
+
+    const thisRequest = ++requestNumber;
+
+    currentView = "search";
+
+    showLoading();
+
+    try {
+
+        const searchData = await fetchAPI(
+            API_URL + "/search?query=" + encodeURIComponent(query)
+        );
+
+        if (thisRequest !== requestNumber) {
+            return;
+        }
+
+        const matchingCoins = searchData.coins || [];
+
+        if (matchingCoins.length === 0) {
+            currentCoins = [];
+            hideLoading();
+            displayCoins();
+            return;
+        }
+
+        const coinIds = matchingCoins
+            .slice(0, 20)
+            .map(function (coin) {
+                return coin.id;
+            });
+
+        const marketData = await fetchAPI(
+            API_URL +
+            "/coins/markets" +
+            "?vs_currency=inr" +
+            "&ids=" + coinIds.join(",") +
+            "&sparkline=false"
+        );
+
+        if (thisRequest !== requestNumber) {
+            return;
+        }
+
+        currentCoins = marketData;
+
+        hideLoading();
+        displayCoins();
+
+    } catch (error) {
+
+        if (thisRequest !== requestNumber) {
+            return;
+        }
+
+        hideLoading();
+        showError(error.message);
+    }
+}
